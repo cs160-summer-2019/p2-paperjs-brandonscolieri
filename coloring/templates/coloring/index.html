@@ -8,8 +8,10 @@
 
 	<script type="text/javascript" src="{% static 'coloring/vendors/jquery/jquery-3.3.1.min.js' %}"></script>
 	<script type="text/javascript" src="{% static 'coloring/vendors/paper/paper-full.min.js' %}"></script>
+	<script type="text/javascript" src="{% static 'coloring/vendors/hammer/hammer.min.js' %}"></script>
 
 	<style type="text/css">
+
 		#color-palette {
 			width: 300px;
 			background-color: #f1f1f1;
@@ -28,6 +30,7 @@
 			margin: 3px;
 		}
 
+
 		#myCanvas {
 			padding-left: 0;
 		    padding-right: 0;
@@ -35,17 +38,66 @@
 		    margin-right: auto;
 		    display: block;
 		}
+		#draw {
+			height: 100%;
+			width: 100%;
+			background-color: black;
+		}
+
+
+		#menu {
+			position: center;
+			width: 100%;
+			/* background-color: green; */
+			background-image: linear-gradient(-90deg, #7F5A83, #0D324D);
+			bottom: 0px;
+			height: 2.5em;
+			margin-left: 0%;
+		}
+
+		.menuButton {
+			height: 100%;
+			width: 8%;
+			border: none;
+			font-weight: bold;
+			color:white;
+			bottom:0;
+			background-color: #9E8FB2;
+			vertical-align:middle;
+			font-size: 2em;
+			outline: none;
+		}
+
+		button.menuButton:active {
+			transform: translateY(2px);
+		}
+
+		.red {
+			background-color: red;
+		}
+
+		.black {
+			background-color: black;
+		}
+
+		.blue {
+			background-color: blue;
+		}
+
+
 	</style>
 
 	<script type="text/javascript" canvas="canvas">
 		window.onload = function() {
 			var canvas = document.getElementById('myCanvas');
+			// var draw = document.getElementById('draw');
 
 			// coloring page
 			var mandala = {
 				item: null,
 				lastClicked: null,
 				filePath: '/static/coloring/images/mandala-freepik.svg'
+				// filePath: '/static/coloring/images/triangles.svg'
 			};	
 
 			// color palette
@@ -55,39 +107,108 @@
 				$container: $('#color-palette')
 			}
 
-			// your rectangle gradient interaction goes in this function
-			// you may also add code outside of the function (e.g., global variables)
+			var paintColor = "red";
+			var strokeSize = 3;
+			// var polygonSides = 5;
 
+			function changeColor(color){
+				paintColor = color;
+			}
 
-			// function makeRectGradient(){
-			// 	var topLeft = canvas.center - [80, 80];
-			// 	var bottomRight = canvas.center + [80, 80];
-			// 	var path = new paper.Path.Rectangle({
-			// 		topLeft: topLeft,
-			// 		bottomRight: bottomRight,
-			// 		fillColor: {
-			// 			gradient: {
-			// 				stops: ['yellow', 'red', 'blue']
-			// 			},
-			// 			origin: topLeft,
-			// 			destination: bottomRight
-			// 		}
-			// 	});
-			// }
+			function increaseSize() {
+				strokeSize++;
+				updateStrokeSize();
+			}
 
-			
- 
+			function decreaseSize() {
+				if (strokeSize < 2) {
+					return;
+				}
+				strokeSize--;
+				updateStrokeSize();
+			}
+
+			function updateStrokeSize() {
+				$("#strokeSize").html(strokeSize);
+			}
+
+			function newRandomNumber(min, max) {
+				  return Math.random() * (max - min) + min;  
+				}
+
+			function addTriangleOnClick() {
+				var mc = new Hammer(document.getElementById('myCanvas'));
+				mc.on("hammer.input", function(event) {
+					if (event.isFirst) {
+						startTriangle(event);
+					} else {
+						endTriangle(event);
+					}
+				});
+
+				function startTriangle(event) {
+					var triangle = new paper.Path.RegularPolygon({
+						center: new paper.Point(event.center.x - 280, event.center.y),
+						fillColor: "red",
+						sides: 3,
+						radius: 50});
+				}
+
+				function endTriangle(event) {
+					paper.project._activeLayer.child.add({x: event.center.x - 280, y: event.center.y});
+				}
+			}
+
+			function enableDrawing() {
+				var mc = new Hammer(document.getElementById('myCanvas'));
+				mc.on("hammer.input", function(event) {
+				   if (event.isFirst) {
+				   		if (event.srcEvent.shiftKey) {
+				   			startDraw(event, "black", strokeSize * 4, "destination-out");
+				   		} else {
+				   			startDraw(event);
+				   		}
+				   } else if (event.isFinal) {
+				   		endDraw(event);
+				   } else {
+				   		middleDraw(event);
+				   }
+				});
+
+				function startDraw(event, strokeColor = paintColor, strokeWidth = strokeSize, blendMode = "normal") {
+					var path = new paper.Path({
+						strokeColor: strokeColor,
+						strokeWidth: strokeWidth,
+						strokeCap: "round",
+						blendMode: blendMode
+					});
+				}
+
+				function middleDraw(event) {
+					paper.project._activeLayer.lastChild.add({x: event.center.x - 280, y: event.center.y})
+				}
+
+				function endDraw(event) {
+					paper.project._activeLayer.lastChild.simplify(5)
+				}
+			}
+
 			function myGradientInteraction(){
-				var rectangle = new paper.Rectangle(285,300,150,80)
+				// var rectangle = new paper.Rectangle(0,0,1000,1000)
+				var rectangle = new paper.Rectangle(285,300,150,150)
+
 				var path = new paper.Path.Rectangle(rectangle);
 				var tool = new paper.Tool();
-				// var colorStops = [cp.history[cp.history.length - 1], cp.history[cp.history.length - 2]]
 				var originPoint;
-				path.fillColor =  "red"
+				path.fillColor = "red"
 				
 				tool.onMouseDown = function (event) {
 					var newPath = new paper.Path();
 					originPoint = event.point;
+				}
+
+				tool.onMouseDrag = function (event) {
+					newPath.position = newPath.position + event.point - event.lastPoint;
 				}
 
 				tool.onMouseUp = function (event) {
@@ -95,7 +216,6 @@
 					var gradient = {
 						gradient: {
 							stops: colorStops,
-							// radial: false
 						},
 							origin: originPoint,
 							destination: event.point
@@ -104,19 +224,114 @@
 				}
 			}
 
-			// your custom interaction goes here!
-			// you may replace everything
+
+			function addSquare(){
+				var randomX = newRandomNumber(0, 750);
+				var randomY = newRandomNumber(0, 750);
+				var rectangle = new paper.Rectangle(randomX, randomY, 150, 150);
+				var path = new paper.Path.Rectangle(rectangle);
+				var tool = new paper.Tool();
+				path.fillColor = cp.history[cp.history.length - 1];
+			}
+
+			function addTriangle() {
+				var randomX = newRandomNumber(0, 750);
+				var randomY = newRandomNumber(0, 750);
+				var triangle = new paper.Path.RegularPolygon({
+						center: new paper.Point(randomX, randomY),
+						fillColor: cp.history[cp.history.length - 1],
+						sides: 3,
+						radius: 70});
+			}
+
+			function addCircle(){
+				var randomX = newRandomNumber(0, 750);
+				var randomY = newRandomNumber(0, 750);	
+				var circle = new paper.Path.Circle({
+						center: new paper.Point(randomX , randomY),
+						fillColor: cp.history[cp.history.length - 1],
+						radius: 70
+					});
+			}
+
+			function addPolygon() {
+				var randomX = newRandomNumber(0, 750);
+				var randomY = newRandomNumber(0, 750);
+				var triangle = new paper.Path.RegularPolygon({
+						center: new paper.Point(randomX, randomY),
+						fillColor: cp.history[cp.history.length - 1],
+						sides: strokeSize,
+						radius: 70});
+			}
+
+
+			function newCanvas(){
+				var rectangle = new paper.Rectangle(0,0,1000,1000);
+				var path = new paper.Path.Rectangle(rectangle);
+				var tool = new paper.Tool();
+				var originPoint;
+				path.fillColor = "white"
+				
+				tool.onMouseDown = function(event) {
+					var newPath = new paper.Path();
+					originPoint = event.point;
+				}
+			}
+
+
 			function myCustomInteraction() {
 				var tool = new paper.Tool();
 
 				tool.onMouseDown = function (event) {
 				    var hit = mandala.item.hitTest(event.point, { tolerance: 10, fill: true });
 				    if (hit) {
-				        hit.item.fillColor = cp.history[cp.history.length - 1];
-				    }
-				}
-			}
+						hit.item.fillColor = cp.history[cp.history.length - 1];
+					};
+				};
 
+				document.getElementById("plusButton").onclick = function() {
+					increaseSize();
+				};
+
+				document.getElementById("minusButton").onclick = function() {
+					decreaseSize()
+				};
+
+				document.getElementById("redPen").onclick = function() {
+					changeColor("red");
+					enableDrawing();
+				};
+
+				document.getElementById("bluePen").onclick = function() {
+					changeColor("blue");
+					enableDrawing();
+				};
+
+				document.getElementById("blackPen").onclick = function() {
+					changeColor("black");
+					enableDrawing();
+				};
+
+				document.getElementById("circleButton").onclick = function() {
+					addCircle();
+				};
+
+				document.getElementById("squareButton").onclick = function() {
+					addSquare();
+				};
+
+				document.getElementById("newCanvasButton").onclick = function() {
+					newCanvas();
+				};
+
+				document.getElementById("triangleButton").onclick = function() {
+					addTriangle();
+				};
+
+				document.getElementById("polygonButton").onclick = function() {
+					addPolygon();
+				};
+			};
 
 			// create a color palette with the given colors
 			function createColorPalette(colors){
@@ -151,14 +366,14 @@
 
 				paper.project.importSVG(mandala.filePath, function(item) { 
 					mandala.item = item._children["design-freepik"];
-				    paper.project.insertLayer(0,mandala.item);
+					paper.project.insertLayer(0, mandala.item);
+					// paper.project.addChild(0,mandala.item);
 
 				    if (custom) {
 				    	myCustomInteraction();	
 				    } else {
 				    	myGradientInteraction();
 				    }		
-					
 				}); 
 			}
 
@@ -173,11 +388,25 @@
 				init(true);
 			}
 		}
+		
 	</script>
+	
 </head>
 <body>	
-
 	<canvas id="myCanvas" width="750px" height="750px"></canvas>
 	<div id="color-palette"></div>
+	<div id="menu">
+		<button class="menuButton red" id="redPen"></button>
+		<button class="menuButton black" id="blackPen"></button>
+		<button class="menuButton blue" id="bluePen"></button>
+		<button class="menuButton plusTapped" id="plusButton">+</button>
+		<span class="menuButton" id="strokeSize">3</span>
+		<button class="menuButton minusTapped" id="minusButton" >-</button>
+		<button class="menuButton addCircle" id="circleButton" >+Cir</button>
+		<button class="menuButton addSquare" id="squareButton" >+Sq</button>
+		<button class="menuButton addSquare" id="triangleButton" >+Tri</button>
+		<button class="menuButton addPolygon" id="polygonButton" >+Poly</button>
+		<button class="menuButton addSquare" id="newCanvasButton" >New</button>
+	</div>
 </body>
 </html>
